@@ -41,6 +41,7 @@ public class Database {
 
 	/**
 	 * Returns an array with all products
+	 * 
 	 * @return an array with all products
 	 */
 	public ArrayList<String> getProducts() {
@@ -61,6 +62,7 @@ public class Database {
 
 	/**
 	 * Returns an array with all orders registered
+	 * 
 	 * @return an array with all orders registered
 	 */
 	public ArrayList<String> getOrderNbrs() {
@@ -68,7 +70,7 @@ public class Database {
 		try {
 
 			Statement myStmt = conn.createStatement();
-			ResultSet myRs = myStmt.executeQuery("select OrderNbr from Orders");
+			ResultSet myRs = myStmt.executeQuery("select OrderNbr from Orders where outdelivdate IS NULL");
 			while (myRs.next()) {
 				al.add(myRs.getString("OrderNbr"));
 			}
@@ -82,7 +84,9 @@ public class Database {
 
 	/**
 	 * Returns the name of the customers connected ordernbr
-	 * @param ordernbr selected ordernumber
+	 * 
+	 * @param ordernbr
+	 *            selected ordernumber
 	 * @return Customer name
 	 */
 	public String getCustomerName(String ordernbr) {
@@ -97,7 +101,9 @@ public class Database {
 			while (myRs.next()) {
 				sb.append(myRs.getString("Name"));
 			}
+
 			return sb.toString();
+
 		} catch (Exception exc) {
 			exc.printStackTrace();
 			return null;
@@ -107,14 +113,18 @@ public class Database {
 
 	/**
 	 * Returns nbr of pallets in stock for the given product
-	 * @param product selected product
+	 * 
+	 * @param product
+	 *            selected product
 	 * @return the number in stock
 	 */
 	public int getPalletsInStock(String product) {
 		try {
+
 			int palletsInStock = 0;
+
 			PreparedStatement myStmt = conn.prepareStatement(
-					"select count(*) as amount from products where productname = ? and orderNbr IS NULL and Blocked = 'N'");
+					"select count(*) as amount from Pallets where productname = ? and orderNbr IS NULL and Blocked = 'N'");
 			myStmt.setString(1, product);
 
 			ResultSet myRs = myStmt.executeQuery();
@@ -122,6 +132,7 @@ public class Database {
 				palletsInStock = Integer.parseInt(myRs.getString("amount"));
 			}
 			return palletsInStock;
+
 		} catch (Exception exc) {
 			exc.printStackTrace();
 			return 0;
@@ -130,16 +141,49 @@ public class Database {
 	}
 
 	/**
-	 * Returns nbr of pallets in stock for the given product
-	 * @param product selected product
-	 * @param date date of production
-	 * @param time time of production
+	 * Blocks a pallet
+	 * 
+	 * @param palletNbr
+	 *            number of pallet
+	 * @return true if its possible to block the pallet
+	 */
+	public boolean blockPallet(String palletNbr) {
+
+		try {
+			if (checkBlockablePallet(palletNbr)){
+				PreparedStatement myStmt = conn.prepareStatement(
+						"update Pallets set blocked ='Y' where palletnbr = ?");
+				myStmt.setString(1, palletNbr);
+				myStmt.execute();
+
+				return true;
+			}
+			return false;
+		}
+
+		catch (Exception exc) {
+			exc.printStackTrace();
+			return false;
+		}
+
+	}
+	
+
+	/**
+	 * Produce a pallet of a product
+	 * 
+	 * @param product
+	 *            selected product
+	 * @param date
+	 *            date of production
+	 * @param time
+	 *            time of production
 	 * @return true if its possible to produce a pallet
 	 */
 	public boolean producePallet(String product, String date, String time) {
 		try {
 			PreparedStatement myStmt = conn.prepareStatement(
-					"insert into products (PalletNbr, OrderNbr, ProdDate, ProdTime, Blocked, ProductName) values (?, ?, ?, ?, ?, ?);");
+					"insert into Pallets (PalletNbr, OrderNbr, ProdDate, ProdTime, Blocked, ProductName) values (?, ?, ?, ?, ?, ?);");
 			myStmt.setString(1, null);
 			myStmt.setString(2, null);
 			myStmt.setString(3, date);
@@ -155,19 +199,22 @@ public class Database {
 			return false;
 
 		}
-
 	}
 
 	/**
 	 * Reserves pallets for a given ordernbr
-	 * @param product selected product
-	 * @param orderNbr order number
-	 * @param nbrOfPallets number of pallets in order
+	 * 
+	 * @param product
+	 *            selected product
+	 * @param orderNbr
+	 *            order number
+	 * @param nbrOfPallets
+	 *            number of pallets in order
 	 */
 	public void reservPallets(String orderNbr, String product, String nbrOfPallets) {
 		try {
 			PreparedStatement myStmt = conn.prepareStatement(
-					"update products set ordernbr = ? where productname = ? and ordernbr IS NULL and Blocked = 'N' limit ?;");
+					"update Pallets set ordernbr = ? where productname = ? and ordernbr IS NULL and Blocked = 'N' limit ?;");
 			myStmt.setString(1, orderNbr);
 			myStmt.setString(2, product);
 			myStmt.setInt(3, Integer.parseInt(nbrOfPallets));
@@ -182,7 +229,9 @@ public class Database {
 
 	/**
 	 * Returns an array with data from a specific cell in table: customers
-	 * @param cell the cell in the database
+	 * 
+	 * @param cell
+	 *            the cell in the database
 	 * @return an array with data from a specific cell in table: customers
 	 */
 	public ArrayList<String> getCustomers(String cell) {
@@ -205,17 +254,22 @@ public class Database {
 		}
 
 	}
-	
+
 	/**
-	 * Returns an array with data from a specific cell in table: orders join products
-	 * @param cell the cell in the database
-	 * @return an array with data from a specific cell in table: orders join products
+	 * Returns an array with data from a specific cell in table: orders join
+	 * products
+	 * 
+	 * @param cell
+	 *            the cell in the database
+	 * @return an array with data from a specific cell in table: orders join
+	 *         products
 	 */
 	public ArrayList<String> getTrack(String cell) {
 		ArrayList<String> al = new ArrayList<String>();
 		try {
 
-			PreparedStatement myStmt = conn.prepareStatement("select * from orders right join products on orders.ordernbr = products.ordernbr order by outdelivdate DESC");
+			PreparedStatement myStmt = conn.prepareStatement(
+					"select * from orders right join Pallets on orders.ordernbr = Pallets.ordernbr order by palletnbr");
 			ResultSet myRs = myStmt.executeQuery();
 
 			while (myRs.next()) {
@@ -234,7 +288,9 @@ public class Database {
 
 	/**
 	 * Returns an array with data from a specific cell in table: storage
-	 * @param cell the cell in the database
+	 * 
+	 * @param cell
+	 *            the cell in the database
 	 * @return an array with data from a specific cell in table: storage
 	 */
 	public ArrayList<String> getStorage(String cell) {
@@ -261,7 +317,9 @@ public class Database {
 
 	/**
 	 * Returns an array with data from a specific cell in table: orders
-	 * @param cell the cell in the database
+	 * 
+	 * @param cell
+	 *            the cell in the database
 	 * @return an array with data from a specific cell in table: orders
 	 */
 	public ArrayList<String> getOrders(String cell) {
@@ -285,15 +343,20 @@ public class Database {
 	}
 
 	/**
-	 * Returns an array with data from a specific cell in table: products
-	 * @param cell the cell in the database
-	 * @return an array with data from a specific cell in table: products
+	 * Returns an array with data from a specific cell in table: Pallets that
+	 * has not been delivered
+	 * 
+	 * @param cell
+	 *            the cell in the database
+	 * @return an array with data from a specific cell in table: Pallets
 	 */
 	public ArrayList<String> getPallets(String cell) {
 		ArrayList<String> al = new ArrayList<String>();
 		try {
-			PreparedStatement myStmt = conn.prepareStatement("select * from products where products.orderNbr IS NULL or products.ordernbr IN (select ordernbr from orders where outdelivdate IS NULL);");
-			//PreparedStatement myStmt = conn.prepareStatement("select * from products order by orderNbr DESC");
+//			PreparedStatement myStmt = conn.prepareStatement(
+//					"select * from Pallets where Pallets.orderNbr IS NULL and blocked = 'N' or Pallets.ordernbr IN (select ordernbr from orders where outdelivdate IS NULL);");
+			PreparedStatement myStmt = conn.prepareStatement(
+					"select * from pallets left join orders on pallets.ordernbr = orders.ordernbr where outdelivDate IS NULL and blocked = 'N' order by productname;");
 			ResultSet myRs = myStmt.executeQuery();
 			while (myRs.next()) {
 				al.add(myRs.getString(cell));
@@ -306,13 +369,15 @@ public class Database {
 			exc.printStackTrace();
 			return null;
 		}
-// select * from products where products.orderNbr IS NULL and products.ordernbr NOT IN (select ordernbr from orders where outdelivdate IS NULL);
 	}
 
 	/**
 	 * updates table rawmaterials (stock)
-	 * @param product the chosen product
-	 * @return true if it was possible to update depending on enough rawmaterials in stock
+	 * 
+	 * @param product
+	 *            the chosen product
+	 * @return true if it was possible to update depending on enough
+	 *         rawmaterials in stock
 	 */
 	private boolean updateStock(String product) {
 		try {
@@ -329,9 +394,12 @@ public class Database {
 		}
 
 	}
+
 	/**
 	 * checks if its possible to update stock
-	 * @return true if it is possible to update depending on enough rawmaterials in stock
+	 * 
+	 * @return true if it is possible to update depending on enough rawmaterials
+	 *         in stock
 	 */
 	private boolean updateAmountInStock() {
 		try {
@@ -352,8 +420,38 @@ public class Database {
 	}
 	
 	/**
-	 * checks updates the values in stock
+	 * checks if its possible to block the pallet with the pallet number the values in stock
+	 * 
 	 * @return true if it was possible to update stock
+	 */
+	private boolean checkBlockablePallet(String palletNbr){
+		try {
+			PreparedStatement myStmt = conn.prepareStatement(
+					"select count(*) as amount from pallets left join orders on pallets.ordernbr = orders.ordernbr where outdelivDate IS NULL and palletnbr = ?;");
+			myStmt.setString(1, palletNbr);
+			ResultSet myRs = myStmt.executeQuery();
+			while (myRs.next()) {
+				if(myRs.getString("amount").equals("0")){
+					return false;
+				}
+
+			}
+
+			return true;
+		}
+
+		catch (Exception exc) {
+			exc.printStackTrace();
+			return false;
+		}
+	}
+
+	/**
+	 * checks updates the values in stock
+	 * 
+	 * @param palletNbr
+	 *            the number of the pallet
+	 * @return true if it was possible to block the pallet
 	 */
 	private boolean checkAmountInStock() {
 		try {
